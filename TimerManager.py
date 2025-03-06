@@ -7,8 +7,8 @@ import json
 MQTT_BROKER = 'mqtt20.iik.ntnu.no'
 MQTT_PORT = 1883
 
-MQTT_TOPIC_INPUT = 'ttm4115/10/command'
-MQTT_TOPIC_OUTPUT = 'ttm4115/10/answer'
+MQTT_TOPIC_INPUT = 'team10/command'
+MQTT_TOPIC_OUTPUT = 'team10/answer'
 
 
 class TimerLogic:

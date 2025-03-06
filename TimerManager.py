@@ -4,11 +4,9 @@ import logging
 from threading import Thread
 import json
 
-# TODO: choose proper MQTT broker address
 MQTT_BROKER = 'mqtt20.iik.ntnu.no'
 MQTT_PORT = 1883
 
-# TODO: choose proper topics for communication
 MQTT_TOPIC_INPUT = 'ttm4115/10/command'
 MQTT_TOPIC_OUTPUT = 'ttm4115/10/answer'
 
@@ -19,17 +17,49 @@ class TimerLogic:
 
     This is the support object for a state machine that models a single timer.
     """
+
+    states = [{'name' : 'completed'}, {'name' : 'active'}]
+    transitions = [
+        # Initial
+        {
+            'source' : 'initial',
+            'target' : 'active',
+            'effect' : 'start'
+        },
+        # Timer
+        {
+            'trigger':'t',
+            'source':'active',
+            'target':'completed',
+            'effect':'stop_transition'
+        },
+        # Report
+        {
+            'trigger' : 'status',
+            'source'  : 'active',
+            'target'  : 'active',
+            'effect'  : 'report_status'
+        }
+    ]
+
     def __init__(self, name, duration, component):
         self._logger = logging.getLogger(__name__)
         self.name = name
         self.duration = duration
         self.component = component
 
-        # TODO: build the transitions
-
-        self.stm = stmpy.Machine(name=name, transitions=[t0, t1, t2], obj=self)
+        self.stm = stmpy.Machine(name=name, transitions=TimerLogic.transitions, obj=self)
 
     # TODO define functions as transition effetcs
+
+    def start(self):
+        pass
+    
+    def stop_transition(self):
+        pass
+    def report_status(self):
+        pass
+
 
 
 class TimerManagerComponent:

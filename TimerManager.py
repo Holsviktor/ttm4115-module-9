@@ -7,8 +7,8 @@ import json
 MQTT_BROKER = 'mqtt20.iik.ntnu.no'
 MQTT_PORT = 1883
 
-MQTT_TOPIC_INPUT = 'team10/command'
-MQTT_TOPIC_OUTPUT = 'team10/answer'
+MQTT_TOPIC_INPUT = '10/command'
+MQTT_TOPIC_OUTPUT = '10/answer'
 
 
 class TimerLogic:
@@ -69,6 +69,7 @@ class TimerLogic:
         self.mqtt_client.publish(MQTT_TOPIC_OUTPUT, f"{self.name} FINISHED ")
 
     def report_status(self):
+        self._logger.info("stm status reached")
         time_remaining = self.stm.get_timer('t')
         ov = ["time", time_remaining];
         msg = json.dumps(ov, indent=6);
@@ -123,23 +124,31 @@ class TimerManagerComponent:
 
         # TODO extract command
 
-        t_list = [];
 
-        if "timer" in msg_parsed["command"]:
-            print(msg_parsed["command"]);
-            try:
-                t = TimerLogic(msg_parsed["command"], msg_parsed["duration"], msg_parsed["component"]);
-                #self.stm_driver.add_machine(t);
-                t_list.append(t);
-            except:
-                print("shit");
+        if "command" in msg_parsed.keys():
+            if "new_timer" in msg_parsed["command"]:
+                print(msg_parsed["command"]);
+                try:
+                    t = TimerLogic(msg_parsed["name"], msg_parsed["duration"], "no component");
+                    self._logger.info(f"Created new timer with name {msg_parsed['name']}")
+                    self.stm_names.append(msg_parsed["name"])
+                    self.stm_driver.add_machine(t.stm);
+                except Exception as e:
+                    print(f"{e}");
+            elif msg_parsed["command"] == "status_all_timers":
+                self._logger.info("command received: status all timers")
+                for name in self.stm_names:
+                    self._logger.info("requesting status from timer {name}")
+                    self.stm_driver.send("status", name)
+            elif msg_parsed["command"] == "status_single_timer":
+                if "name" in msg_parsed.keys():
+                    self.stm_driver.send("status", msg_parsed["name"])
+                else:
+                    self._logger.error("Name not in single status message")
+            else:
+                self._logger.error("Command {msg_parsed['command']} not valid")
         else:
-            print("Unknown Timer")
-        # TODO determine what to do
-
-        for timer in t_list:
-            print(timer.report_status());
-
+            self._logger.error("Command not in message")
         
     def __init__(self):
         """
@@ -181,6 +190,9 @@ class TimerManagerComponent:
         self.stm_driver = stmpy.Driver()
         self.stm_driver.start(keep_active=True)
         self._logger.debug('Component initialization finished')
+
+        # list of all machines
+        self.stm_names = []
 
 
     def stop(self):

@@ -7,8 +7,8 @@ import json
 MQTT_BROKER = 'mqtt20.iik.ntnu.no'
 MQTT_PORT = 1883
 
-MQTT_TOPIC_INPUT = 'team10/command'
-MQTT_TOPIC_OUTPUT = 'team10/answer'
+MQTT_TOPIC_INPUT = '10/command'
+MQTT_TOPIC_OUTPUT = '10/answer'
 
 
 class TimerLogic:
@@ -59,8 +59,6 @@ class TimerLogic:
         driver.add_machine(self.stm)
         driver.start()
 
-    # TODO define functions as transition effetcs
-
     def start(self):
         self.stm.start_timer('t', self.duration)
         self._logger.info(f"Timer started, {self.duration}")
@@ -69,7 +67,6 @@ class TimerLogic:
         self.mqtt_client.publish(MQTT_TOPIC_OUTPUT, f"{self.name} FINISHED ")
 
     def report_status(self):
-        self._logger.info("stm status reached")
         time_remaining = self.stm.get_timer('t')
         ov = ["time", time_remaining];
         msg = json.dumps(ov, indent=6);
@@ -117,13 +114,7 @@ class TimerManagerComponent:
 
         """
         self._logger.debug('Incoming message to topic {}'.format(msg.topic))
-
-        # TODO unwrap JSON-encoded payload
-        
         msg_parsed = json.loads(msg.payload.decode('utf-8'));
-
-        # TODO extract command
-
 
         if "command" in msg_parsed.keys():
             if "new_timer" in msg_parsed["command"]:
@@ -134,11 +125,10 @@ class TimerManagerComponent:
                     self.stm_names.append(msg_parsed["name"])
                     self.stm_driver.add_machine(t.stm);
                 except Exception as e:
-                    print(f"{e}");
+                    self._logger.info(f"{e}");
             elif msg_parsed["command"] == "status_all_timers":
-                self._logger.info("command received: status all timers")
                 for name in self.stm_names:
-                    self._logger.info("requesting status from timer {name}")
+                    self._logger.debug("requesting status from timer {name}")
                     self.stm_driver.send("status", name)
             elif msg_parsed["command"] == "status_single_timer":
                 if "name" in msg_parsed.keys():

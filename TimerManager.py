@@ -52,7 +52,6 @@ class TimerLogic:
         self._logger.debug('Timer connecting to MQTT broker {} at port {}'.format(MQTT_BROKER, MQTT_PORT))
         self.mqtt_client.connect(MQTT_BROKER, MQTT_PORT)
         self.mqtt_client.subscribe(MQTT_TOPIC_OUTPUT);
-        self.mqtt_client.publish(MQTT_TOPIC_OUTPUT, "HELP ME")
 
         self.stm = stmpy.Machine(name=name, transitions=TimerLogic.transitions, obj=self)
         driver = stmpy.Driver()
@@ -70,9 +69,12 @@ class TimerLogic:
 
     def report_status(self):
         time_remaining = self.stm.get_timer('t')
-        ov = ["time", time_remaining];
+        ov = [f"{self.get_timer_name()}", time_remaining];
         msg = json.dumps(ov, indent=6);
         self.mqtt_client.publish(MQTT_TOPIC_OUTPUT, msg);
+
+    def get_timer_name(self):
+        return self.name
 
 class TimerManagerComponent:
     """
@@ -123,22 +125,26 @@ class TimerManagerComponent:
 
         # TODO extract command
 
-        t_list = [];
+     
 
-        if "timer" in msg_parsed["command"]:
-            print(msg_parsed["command"]);
-            try:
-                t = TimerLogic(msg_parsed["command"], msg_parsed["duration"], msg_parsed["component"]);
-                #self.stm_driver.add_machine(t);
-                t_list.append(t);
-            except:
-                print("shit");
-        else:
-            print("Unknown Timer")
+        try:
+            match msg_parsed["command"]:
+                case "new_timer":
+                    self.t_list.append(TimerLogic(msg_parsed["name"], msg_parsed["duration"], msg_parsed["component"]))
+                case "status_all_timers": 
+                    for timer in self.t_list:
+                        timer.report_status();
+                case "status_single_timer":
+                    for timer in self.t_list:
+                        if timer.get_timer_name() == msg_parsed["name"]:
+                            timer.report_status();
+                case _:
+                   print("Unknown Command")
+        except:
+            print("Command Failed.")
         # TODO determine what to do
 
-        for timer in t_list:
-            print(timer.report_status());
+
 
         
     def __init__(self):
@@ -159,6 +165,7 @@ class TimerManagerComponent:
         machines, for instance.
 
         """
+        self.t_list = [];
         # get the logger object for the component
         self._logger = logging.getLogger(__name__)
         print('logging under name {}.'.format(__name__))

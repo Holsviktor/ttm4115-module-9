@@ -107,11 +107,21 @@ class TimerManagerComponent:
 
         # TODO unwrap JSON-encoded payload
         
+        msg_parsed = json.loads(msg.payload.decode('utf-8'));
+
         # TODO extract command
 
+        if "timer" in msg_parsed["command"]:
+            print(msg_parsed["command"]);
+            try:
+                t = TimerLogic(msg_parsed["command"], msg_parsed["duration"], msg_parsed["component"]);
+            except:
+                print("shit");
+        else:
+            print("Unknown Timer")
         # TODO determine what to do
 
-
+        
     def __init__(self):
         """
         Start the component.

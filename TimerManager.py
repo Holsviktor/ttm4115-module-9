@@ -48,19 +48,24 @@ class TimerLogic:
         self.duration = duration
         self.component = component
 
+        self.mqtt_client = mqtt.Client()
+        self._logger.debug('Timer connecting to MQTT broker {} at port {}'.format(MQTT_BROKER, MQTT_PORT))
+        self.mqtt_client.connect(MQTT_BROKER, MQTT_PORT)
+
         self.stm = stmpy.Machine(name=name, transitions=TimerLogic.transitions, obj=self)
 
     # TODO define functions as transition effetcs
 
     def start(self):
-        pass
+        self.start_timer('t', self.duration)
+        self._logger.info(f"Timer started, {self.duration}")
     
     def stop_transition(self):
-        pass
+        self.mqtt_client.publish(MQTT_TOPIC_OUTPUT, f"{self.name} FINISHED ")
+
     def report_status(self):
-        pass
-
-
+        time_remaining = self.get_timer('t')
+        self.mqtt_client.publish(MQTT_TOPIC_OUTPUT, f"{self.name} Time left: {time_remaining} ")
 
 class TimerManagerComponent:
     """

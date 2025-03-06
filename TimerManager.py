@@ -51,21 +51,28 @@ class TimerLogic:
         self.mqtt_client = mqtt.Client()
         self._logger.debug('Timer connecting to MQTT broker {} at port {}'.format(MQTT_BROKER, MQTT_PORT))
         self.mqtt_client.connect(MQTT_BROKER, MQTT_PORT)
+        self.mqtt_client.subscribe(MQTT_TOPIC_OUTPUT);
+        self.mqtt_client.publish(MQTT_TOPIC_OUTPUT, "HELP ME")
 
         self.stm = stmpy.Machine(name=name, transitions=TimerLogic.transitions, obj=self)
+        driver = stmpy.Driver()
+        driver.add_machine(self.stm)
+        driver.start()
 
     # TODO define functions as transition effetcs
 
     def start(self):
-        self.start_timer('t', self.duration)
+        self.stm.start_timer('t', self.duration)
         self._logger.info(f"Timer started, {self.duration}")
     
     def stop_transition(self):
         self.mqtt_client.publish(MQTT_TOPIC_OUTPUT, f"{self.name} FINISHED ")
 
     def report_status(self):
-        time_remaining = self.get_timer('t')
-        self.mqtt_client.publish(MQTT_TOPIC_OUTPUT, f"{self.name} Time left: {time_remaining} ")
+        time_remaining = self.stm.get_timer('t')
+        ov = ["time", time_remaining];
+        msg = json.dumps(ov, indent=6);
+        self.mqtt_client.publish(MQTT_TOPIC_OUTPUT, msg);
 
 class TimerManagerComponent:
     """
@@ -116,15 +123,22 @@ class TimerManagerComponent:
 
         # TODO extract command
 
+        t_list = [];
+
         if "timer" in msg_parsed["command"]:
             print(msg_parsed["command"]);
             try:
                 t = TimerLogic(msg_parsed["command"], msg_parsed["duration"], msg_parsed["component"]);
+                #self.stm_driver.add_machine(t);
+                t_list.append(t);
             except:
                 print("shit");
         else:
             print("Unknown Timer")
         # TODO determine what to do
+
+        for timer in t_list:
+            print(timer.report_status());
 
         
     def __init__(self):
